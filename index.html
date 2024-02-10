@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>Map Design</title>
+    <title>Map Tiles</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.css" rel="stylesheet">
@@ -32,6 +32,7 @@
             border: 1px solid rgba(0, 0, 0, 0.4);
             font-family: 'Open Sans', sans-serif;
         }
+        
 
         /* each layer on the menu */
         #menu a {
@@ -65,11 +66,24 @@
         #menu a.active:hover {
             background: #3074a4;
         }
+
+        #description {
+            position: absolute;
+            z-index: 1;
+            bottom: 30px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 3px;
+            width: 200px;
+        }
+
     </style>
     <script src="https://api.mapbox.com/mapbox-gl-js/v2.8.1/mapbox-gl.js"></script>
 </head>
 
 <body>
+    <div id="description">Click on map option in top right corner.</div>
     <nav id="menu"></nav>
     <div id='map'></div>
     <script type="text/javascript">
@@ -78,11 +92,22 @@
         let map = new mapboxgl.Map({
             container: 'map', // container ID
             style: 'mapbox://styles/mapbox/dark-v10',
-            zoom: 12, // starting zoom
-            center: [-122.2559435, 47.6002614] // starting center
+            zoom: 10.5, // starting zoom
+            center: [-122.32, 47.6002614] // starting center
         });
 
+        map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
+
         map.on('load', () => { //simplifying the function statement: arrow with brackets to define a function
+
+            const descriptions = {
+                'Basic': 'This map is a custom basemap created in Mapbox.',
+                'Library': 'This map shows the locations of Public Libraries in Seattle. Data: Seattle City GIS.',
+                'LibraryBasic': 'This map shows the Library data on top of the custom Mapbox basemap. Data: Seattle City GIS.',
+                'Hospitals': 'This map shows all hospitals locations in the Seattle Area. Data: Seattle City GIS.'
+            };
+
 
             map.addSource('Basic-tiles', {
                 'type': 'raster',
@@ -103,20 +128,20 @@
                 'attribution': 'Map tiles designed by Wyatt Stanley'
             });
 
-            map.addSource('BasicLibrary-tiles', {
+            map.addSource('LibraryBasic-tiles', {
                 'type': 'raster',
                 'tiles': [
-                    'assets/BasicLibrary/{z}/{x}/{y}.png'
+                    'assets/LibraryBasic/{z}/{x}/{y}.png'
                 ],
                 'tileSize': 256,
 
                 'attribution': 'Map tiles designed by Wyatt Stanley'
             });
 
-            map.addSource('Garden-tiles', {
+            map.addSource('Hospitals-tiles', {
                 'type': 'raster',
                 'tiles': [
-                    'assets/Garden/{z}/{x}/{y}.png'
+                    'assets/Hospitals/{z}/{x}/{y}.png'
                 ],
                 'tileSize': 256,
 
@@ -142,35 +167,52 @@
             });
 
             map.addLayer({
-                'id': 'BasicLibrary',
+                'id': 'LibraryBasic',
                 'type': 'raster',
                 'layout': {
                     'visibility': 'none'
                 },
-                'source': 'BasicLibrary-tiles'
+                'source': 'LibraryBasic-tiles'
             });
 
             map.addLayer({
-                'id': 'Garden',
+                'id': 'Hospitals',
                 'type': 'raster',
                 'layout': {
                     'visibility': 'none'
                 },
-                'source': 'Garden-tiles'
+                'source': 'Hospitals-tiles'
             });
 
+
+            map.on('idle', () => {
+                const visibleLayers = map.getStyle().layers.filter(layer => map.getLayoutProperty(layer.id, 'visibility') === 'visible');
+                const visibleLayerId = visibleLayers[0].id; // Assuming only one layer is visible at a time
+                document.getElementById('description').textContent = descriptions[visibleLayerId];
+            });
+
+            // Toggle layer visibility when clicking on the layer menu
+            document.getElementById('menu').addEventListener('click', function(e) {
+                const layerId = e.target.textContent;
+                const visibility = map.getLayoutProperty(layerId, 'visibility');
+                map.setLayoutProperty(layerId, 'visibility', visibility === 'visible' ? 'none' : 'visible');
+            });
+
+
         });
+
+        
 
 
         // After the last frame rendered before the map enters an "idle" state.
         map.on('idle', () => {
             // If these two layers were not added to the map, abort
-            if (!map.getLayer('Basic') || !map.getLayer('Library') || !map.getLayer('BasicLibrary') || !map.getLayer('Garden')) {
+            if (!map.getLayer('Basic') || !map.getLayer('Library') || !map.getLayer('LibraryBasic') || !map.getLayer('Hospitals')) {
                 return;
             }
 
             // Enumerate ids of the layers.
-            const toggleableLayerIds = ['Basic', 'Library', 'BasicLibrary', 'Garden'];
+            const toggleableLayerIds = ['Basic', 'Library', 'LibraryBasic', 'Hospitals'];
 
             // Set up the corresponding toggle button for each layer.
             for (const id of toggleableLayerIds) {
